@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.24.0"
+__generated_with = "0.25.1"
 app = marimo.App()
 
 
@@ -16,7 +16,7 @@ def _():
     import mpltern
 
     plt.style.use("petroff10")
-    return AutoMinorLocator, MultipleLocator, mo, np, plt
+    return MultipleLocator, mo, np, plt
 
 
 @app.cell(hide_code=True)
@@ -46,14 +46,46 @@ def _(mo):
     mo.md(r"""
     ## build linear system
 
+    $A\mathbf{x}=\mathbf{b}$
+
     assumptions:
 
     * well-mixed blend
     * no acid-based chemistry or chemical reactions in general
-    * no excess volume of mixing
+    * excess volume of mixing is zero
     * no evaporation over the course of blending
     """)
     return
+
+
+@app.cell
+def _():
+    wines = ["Sémillon", "Sauv. Blanc", "Mauzac"] # defines order in x
+    return (wines,)
+
+
+@app.cell
+def _(np):
+    # parent pure-varietal wine features
+    A = np.array([
+        [5.4, 6.2, 5.2], # acid [g/L]
+        [4.3, 5.2, 4.8], # sugar [g/L]
+        [1, 1, 1]        # sum-to-one constraint
+    ])
+    A
+    return (A,)
+
+
+@app.cell
+def _(np):
+    # blend features
+    b = np.array([
+        5.7, # acid [g/L]
+        4.9, # sugar [g/L]
+        1    # sum-to-one
+    ])
+    b
+    return (b,)
 
 
 @app.cell(hide_code=True)
@@ -65,42 +97,18 @@ def _(mo):
 
 
 @app.cell
-def _(np):
-    A = np.array([
-        [5.4, 6.2, 5.2],
-        [4.3, 5.2, 4.8],
-        [1, 1, 1]
-    ])
-    A
-    return (A,)
-
-
-@app.cell
-def _(np):
-    b = np.array([
-        5.7,
-        4.9,
-        1
-    ])
-    b
-    return (b,)
-
-
-@app.cell
 def _(A, b, np):
     x = np.linalg.solve(A, b)
-    x
+    x # vol %
     return (x,)
 
 
 @app.cell
-def _(plt, x):
-    wines = ["Sémillon", "Sauv. Blanc", "Mauzac"]
-
+def _(plt, wines, x):
     fig, ax = plt.subplots()
     ax.pie(x, labels=wines, autopct='%1.1f%%')
     plt.show()
-    return (wines,)
+    return
 
 
 @app.cell(hide_code=True)
@@ -131,21 +139,12 @@ def _(np):
 
         m = A.shape[0]
         n = A.shape[1]
-    
+
         assert len(b) == n
 
-        # # clear but inefficnet
-        # A_new = np.copy(A)
-        # b_new = np.copy(b)
-        # for i in range(n):
-        #     b_new[i] = b[i] + sigma * np.random.randn()
-        #     for j in range(m):
-        #         A_new[i, j] = A[i, j] + sigma * np.random.randn()
-
-        # simple
-        b_new = b + sigma * np.random.randn(3)
+        b_new = b + sigma * np.random.randn(m)
         A_new = A + sigma * np.random.randn(m, n)
-    
+
         return A_new, b_new
 
     return (perturbed_problem,)
@@ -164,7 +163,7 @@ def _(A, b, np, perturbed_problem):
 
 
 @app.cell
-def _(AutoMinorLocator, MultipleLocator, plt, wines, xs):
+def _(MultipleLocator, plt, wines, xs):
     ax2 = plt.subplot(projection="ternary")
     ax2.scatter(
         [x[0] for x in xs], 
@@ -173,16 +172,17 @@ def _(AutoMinorLocator, MultipleLocator, plt, wines, xs):
         s=64.0, c="C1", edgecolors="k", alpha=0.6
     )
 
-    ax2.set_tlabel(wines[0])
-    ax2.set_llabel(wines[1])
-    ax2.set_rlabel(wines[2])
+    ax2.set_tlabel(wines[0] + " [vol. fraction]")
+    ax2.set_llabel(wines[1] + " [vol. fraction]")
+    ax2.set_rlabel(wines[2] + " [vol. fraction]")
 
-    ax2.taxis.set_major_locator(MultipleLocator(0.25))
-    ax2.laxis.set_major_locator(MultipleLocator(0.20))
+    ax2.taxis.set_major_locator(MultipleLocator(0.1))
+    ax2.laxis.set_major_locator(MultipleLocator(0.10))
     ax2.raxis.set_major_locator(MultipleLocator(0.10))
 
-    ax2.laxis.set_minor_locator(MultipleLocator(0.1))
-    ax2.raxis.set_minor_locator(AutoMinorLocator(5))
+    ax2.taxis.set_minor_locator(MultipleLocator(0.05))
+    ax2.laxis.set_minor_locator(MultipleLocator(0.05))
+    ax2.raxis.set_minor_locator(MultipleLocator(0.05))
 
     ax2.grid(axis='t')
     ax2.grid(axis='l', which='minor', linestyle='--')
