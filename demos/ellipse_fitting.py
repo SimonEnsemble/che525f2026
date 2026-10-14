@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.25.0"
+__generated_with = "0.25.1"
 app = marimo.App()
 
 
@@ -15,7 +15,7 @@ def _():
     from matplotlib.patches import Ellipse
 
     plt.style.use("petroff10")
-    return mo, sns
+    return Ellipse, mo, np, pd, plt, sns
 
 
 @app.cell
@@ -60,7 +60,7 @@ def _(mo):
 
     ## ellipse fitting
 
-    :question: given a set of points tracing out an ellipse-like shape, how do I find the equation of the ellipse that fit them best?
+    :question: given a set of points tracing out an ellipse-like shape, how do I find the ellipse that fits them best?
 
 
     /// note | learning resource
@@ -90,6 +90,162 @@ def _(mo):
 
     <img src="https://thumb.wikimedia.org/wikipedia/commons/thumb/7/7c/Hereditary_Elliptocytosis_in_a_70-year-old_man.tif/lossy-page1-1920px-Hereditary_Elliptocytosis_in_a_70-year-old_man.tif.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=thumbnail" width=300>
     """)
+    return
+
+
+@app.cell
+def _(pd):
+    data = pd.read_csv("https://raw.githubusercontent.com/SimonEnsemble/che525f2026/refs/heads/main/demos/cell_outlines.csv")
+    data
+    return (data,)
+
+
+@app.cell
+def _(data):
+    cells = data["cell"].unique()
+    cells
+    return (cells,)
+
+
+@app.cell(hide_code=True)
+def _(cells, mo):
+    my_dropdown = mo.ui.dropdown(
+        options=cells,
+        value="A",
+        label="choose a cell:"
+    )
+    my_dropdown
+    return (my_dropdown,)
+
+
+@app.cell
+def _(data, my_dropdown):
+    data.groupby("cell").get_group(my_dropdown.value)
+    return
+
+
+@app.cell
+def _(data, sns):
+    cell_to_color = dict(zip(data["cell"].unique(), sns.color_palette("Set2")))
+    cell_to_color
+    return (cell_to_color,)
+
+
+@app.cell
+def _(cell_to_color, cells, data, plt):
+    def viz_data(data, cells):
+        fig, ax = plt.subplots()
+        ax.set_aspect('equal', 'box')
+        plt.xlabel("x [µm]")
+        plt.ylabel("y [µm]")
+
+        # draw data
+        for cell in cells:
+            data_cell = data.groupby("cell").get_group(cell)
+            plt.scatter(
+                data_cell["x [µm]"], data_cell["y [µm]"],
+                color=cell_to_color[cell],
+                label=cell, s=12, zorder=12
+            )
+
+        plt.legend()
+        return fig, ax
+
+    viz_data(data, cells)
+    return (viz_data,)
+
+
+@app.cell
+def _(np):
+    def build_linear_system(data, cell):
+        data_cell = data.groupby("cell").get_group(cell)
+
+        x = data_cell["x [µm]"].to_numpy()
+        y = data_cell["y [µm]"].to_numpy()
+
+        A = np.column_stack([x * y, y**2, x, y, np.ones_like(x)])
+        b = -x**2
+
+        return A, b
+
+    return (build_linear_system,)
+
+
+@app.cell
+def _(build_linear_system, data, my_dropdown):
+    build_linear_system(data, my_dropdown.value)
+    return
+
+
+@app.cell
+def _(build_linear_system, data, my_dropdown):
+    A, b = build_linear_system(data, my_dropdown.value)
+    A, b
+    return A, b
+
+
+@app.cell
+def _(A, b, np):
+    x = np.linalg.lstsq(A, b)[0]
+    x # [B, C, D, E, F]
+    return (x,)
+
+
+@app.cell
+def _(Ellipse, np):
+    def conic_to_ellipse(B, C, D, E, F):
+        # https://en.wikipedia.org/wiki/Ellipse#Parametric_representation
+        Δ = B**2 - 4 * C
+        assert Δ < 0.0
+        K = E**2 + C*D**2 - B*D*E + Δ*F
+        assert K > 0.0
+
+        a = -np.sqrt(
+            2*(E**2 + C*D**2 - B*D*E + Δ*F) * (1+C + np.sqrt((1-C)**2 + B**2))
+        ) / Δ
+        b = -np.sqrt(
+            2*(E**2 + C*D**2 - B*D*E + Δ*F) * (1+C - np.sqrt((1-C)**2 + B**2))
+        ) / Δ
+
+        x0 = (2 * C * D - B * E) / Δ
+        y0 = (2 * 1 * E - B * D) / Δ
+
+        theta = 1/2 * np.atan2(-B, C - 1)
+
+        return Ellipse((x0, y0), 2*a, 2*b, angle=np.degrees(theta),
+                       fill=False, color="k", lw=2)
+
+    return (conic_to_ellipse,)
+
+
+@app.cell
+def _(conic_to_ellipse, x):
+    ellipse = conic_to_ellipse(*x)
+    return
+
+
+@app.cell
+def _(build_linear_system, cells, conic_to_ellipse, data, np, plt, viz_data):
+    def fit_all(data, cells):
+        fig, ax = viz_data(data, cells)
+        ax.set_aspect('equal', 'box')
+
+        # draw data
+        for cell in cells:
+            # get data pertaining to this cell
+            data_cell = data.groupby("cell").get_group(cell)
+    
+            # fit ellipse
+            A, b = build_linear_system(data, cell)
+            x = np.linalg.lstsq(A, b)[0]
+            ellipse = conic_to_ellipse(*x)
+
+            # draw fitted ellipse
+            ax.add_patch(ellipse)
+
+        plt.show()
+
+    fit_all(data, cells)
     return
 
 
