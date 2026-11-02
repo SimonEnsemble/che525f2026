@@ -1,0 +1,183 @@
+import marimo
+
+__generated_with = "0.25.2"
+app = marimo.App()
+
+
+@app.cell
+def _():
+    import marimo as mo
+    import matplotlib.pyplot as plt
+    import numpy as np
+    import random
+    from matplotlib.ticker import MaxNLocator
+
+    plt.style.use("petroff10")
+    plt.rcParams.update({"font.size": 14})
+    return MaxNLocator, mo, np, plt, random
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    # weighted sampling
+    """)
+    return
+
+
+@app.cell
+def _():
+    return
+
+
+@app.cell
+def _():
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    # Markov chains
+    """)
+    return
+
+
+@app.cell
+def _(np):
+    def check_left_stochastic(A):
+        n = A.shape[0]
+        if A.shape != (n, n):
+            raise ValueError("A must be a square matrix.")
+        if np.any(A < 0) or not np.allclose(A.sum(axis=0), 1):
+            raise ValueError("Each col of A must be non-negative and sum to 1")
+
+    return (check_left_stochastic,)
+
+
+@app.cell
+def _(np):
+    def stationary_distribution(A):
+        """
+        for left-stochastic A: 
+            right eigenvector for eigenvalue 1, normalised to sum to 1.
+        """
+        eigvals, eigvecs = np.linalg.eig(A)
+        pi = np.real(eigvecs[:, np.argmin(np.abs(eigvals - 1))])
+        return pi / pi.sum()
+
+    return (stationary_distribution,)
+
+
+@app.cell
+def _(check_left_stochastic, np, random):
+    def simulate_markov_chain(
+        A, init_state, n_steps, seed=None, state_map=None
+    ):
+        """
+        simulate a discrete-time, finite-space, time-homogeneous Markov chain.
+
+        A           : left-stochastic transition matrix.
+                      A[i, j] = P(next = i | current = j)
+        init_state  : initial state in {0, ..., n-1}
+        n_steps     : number of transitions to simulate
+        seed        : optional random seed for reproducibility
+        state_map   : maps ints to string for interpretable state
+
+        Returns an array of n_steps + 1 visited states (including the start).
+        """
+        n = A.shape[0] # number of states
+        check_left_stochastic(A)
+ 
+        rng = random.Random(seed)
+        chain = np.empty(n_steps + 1, dtype=int)
+        chain[0] = init_state
+        for t in range(1, n_steps + 1):
+            chain[t] = rng.choices(range(n), weights=A[:, chain[t-1]])[0]
+
+        if state_map:
+            return " ".join(state_map[s] for s in chain)
+        return chain
+
+    return
+
+
+@app.cell
+def _(MaxNLocator, check_left_stochastic, np, plt, stationary_distribution):
+    def viz_dynamics(A, init_state, n_steps, state_map):
+        """
+        plot P(X_t = i) for each state i, 
+            for t = 0, ..., n_steps, starting from init_state.
+
+        uses the exact evolution p_{t+1} = A p_t (no sampling), 
+            with p_0 = e_{init_state}.
+        """
+        check_left_stochastic(A)
+        p_inf = stationary_distribution(A)
+        n = A.shape[0]
+ 
+        P = np.zeros((n_steps + 1, n))
+        P[0, init_state] = 1.0
+        for t in range(n_steps):
+            P[t + 1, :] = A @ P[t, :]
+ 
+        t = np.arange(n_steps + 1)
+ 
+        fig, ax = plt.subplots(figsize=(8, 4.5))
+        for i in range(n):
+            ax.plot(
+                t, P[:, i], marker="o", markersize=6, label=state_map[i], lw=2
+            )
+        for s in range(n):
+            ax.axhline(y=p_inf[s], color=f"C{s}", linestyle="--")
+        ax.set_xlabel("time, $t$")
+        ax.set_ylabel("probability in state $P(X_t = i)$")
+        ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+        ax.set_ylim(-0.02, 1.02)
+        ax.grid(alpha=0.3)
+        plt.xlim(-0.5, n_steps+0.5)
+        ax.legend()
+        fig.tight_layout()
+        plt.show()
+
+    return
+
+
+@app.cell
+def _(np, plt):
+    def viz_chain_length_distn(Q, R, init_state, n_steps):
+        n = Q.shape[0]
+
+        # initial state
+        q = np.zeros(n)
+        q[init_state] = 1.0
+
+        p_absorb = np.zeros(n_steps)
+        for t in range(1, n_steps):
+            p_absorb[t] = R @ q
+            q = Q @ q
+
+        t = np.arange(n_steps)
+
+        mode = np.argmax(p_absorb)
+        mean = np.linalg.inv(np.eye(n) - Q).sum(axis=0)[init_state]
+
+        plt.figure()
+        plt.xlabel("chain length")
+        plt.ylabel("probability")
+        plt.plot(
+            t, p_absorb, marker="s", markersize=6, lw=2, 
+            color="C4", clip_on=False
+        )
+        plt.axvline(mode, color="k", linestyle=":", label=f"mode = {mode}")
+        plt.axvline(mean, color="k", linestyle="--", label=f"mean = {mean}")
+        plt.xlim(xmin=0)
+        plt.ylim(ymin=0)
+        plt.legend()
+        plt.show()
+
+    return
+
+
+if __name__ == "__main__":
+    app.run()
