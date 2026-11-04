@@ -65,14 +65,14 @@ def _(np, solve_ivp):
 def _(A, np, plt, u0):
     def viz_phase_plane(A, u_max, u0=None):
         eigvals, eigvecs = np.linalg.eig(A)
-    
+
         fig, ax = plt.subplots()
  
         x = np.linspace(0, u_max, 25)
         X, Y = np.meshgrid(x, x)
         U = A[0, 0] * X + A[0, 1] * Y
         V = A[1, 0] * X + A[1, 1] * Y
-    
+
         ax.streamplot(X, Y, U, V, color="gray")
 
         if u0 is not None:
@@ -221,6 +221,134 @@ def _(np, xs):
     B_max = np.max([x[1] for x in xs])
     B_max
     return (B_max,)
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## pendulum
+    """)
+    return
+
+
+@app.cell
+def _(np):
+    g = 9.8      # m/s^2
+    m = 0.1      # kg
+    gamma = 0.05 # 1/s
+    L = 1        # m
+
+    A_pendulum = np.array(
+        [
+            [0, 1],
+            [-g/L, -gamma/m]
+        ]
+    )
+    A_pendulum
+    return (A_pendulum,)
+
+
+@app.cell
+def _(A_pendulum, np):
+    lambda_pendulum, V_pendulum = np.linalg.eig(A_pendulum)
+    lambda_pendulum
+    return V_pendulum, lambda_pendulum
+
+
+@app.cell
+def _(lambda_pendulum):
+    alpha, beta = lambda_pendulum[0].real, lambda_pendulum[0].imag
+    alpha, beta
+    return alpha, beta
+
+
+@app.cell
+def _(V_pendulum):
+    V_pendulum
+    return
+
+
+@app.cell
+def _(V_pendulum):
+    a, b = V_pendulum[:, 0].real, V_pendulum[:, 0].imag
+    a, b
+    return a, b
+
+
+@app.cell
+def _(a, b, np):
+    P = np.column_stack([a, b])
+    P
+    return (P,)
+
+
+@app.cell
+def _(np):
+    u0_pendulum = np.array([np.pi/8, 0])
+    return (u0_pendulum,)
+
+
+@app.cell
+def _(P, np, u0_pendulum):
+    C = np.linalg.solve(P, u0_pendulum)
+    C
+    return (C,)
+
+
+@app.cell
+def _(C, P):
+    P * C
+    return
+
+
+@app.cell
+def _(np):
+    ts_pendulum = np.linspace(0, 25.0, 500)
+    return (ts_pendulum,)
+
+
+@app.cell
+def _(C, P, alpha, beta, np):
+    def u_pendulum(t):
+        X = np.array(
+            [
+                [np.cos(beta * t), np.sin(beta * t)],
+                [-np.sin(beta * t), np.cos(beta * t)]
+            ]
+        )
+        return np.exp(alpha * t) * P @ X @ C
+
+    return (u_pendulum,)
+
+
+@app.cell
+def _(ts_pendulum, u_pendulum):
+    us_pendulum = [u_pendulum(t_i) for t_i in ts_pendulum]
+    return (us_pendulum,)
+
+
+@app.cell
+def _(us_pendulum):
+    us_pendulum[0]
+    return
+
+
+@app.cell
+def _(np, plt, ts_pendulum, us_pendulum):
+    plt.figure()
+    plt.plot(ts_pendulum, [u[0] for u in us_pendulum], lw=2)
+    plt.axhline(0, color="gray", lw=0.5)
+    plt.xlim([0, np.max(ts_pendulum)])
+    plt.xlabel("time, $t$ [s]")
+    plt.ylabel(r"angle, $\theta(t)$ [rad]")
+    plt.legend()
+    plt.show()
+    return
+
+
+@app.cell
+def _():
+    return
 
 
 if __name__ == "__main__":
