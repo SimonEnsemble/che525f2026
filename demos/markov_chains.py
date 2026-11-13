@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.25.2"
+__generated_with = "0.25.1"
 app = marimo.App()
 
 
@@ -27,11 +27,14 @@ def _(mo):
 
 @app.cell
 def _():
-    return
+    states = ["Pizza", "Salad", "Mac & Cheese"]
+    probs = [0.5, 0.1, 0.4]
+    return probs, states
 
 
 @app.cell
-def _():
+def _(probs, random, states):
+    random.choices(states, weights=probs)[0]
     return
 
 
@@ -41,6 +44,18 @@ def _(mo):
     # Markov chains
     """)
     return
+
+
+@app.cell
+def _(np):
+    A = np.array(
+        [
+            [0.9, 0.2],
+            [0.1, 0.8]
+        ]
+    )
+    A
+    return (A,)
 
 
 @app.cell
@@ -56,6 +71,12 @@ def _(np):
 
 
 @app.cell
+def _(A, check_left_stochastic):
+    check_left_stochastic(A)
+    return
+
+
+@app.cell
 def _(np):
     def stationary_distribution(A):
         """
@@ -67,6 +88,12 @@ def _(np):
         return pi / pi.sum()
 
     return (stationary_distribution,)
+
+
+@app.cell
+def _(A, stationary_distribution):
+    stationary_distribution(A)
+    return
 
 
 @app.cell
@@ -99,11 +126,17 @@ def _(check_left_stochastic, np, random):
             return " ".join(state_map[s] for s in chain)
         return chain
 
+    return (simulate_markov_chain,)
+
+
+@app.cell
+def _(A, simulate_markov_chain):
+    simulate_markov_chain(A, 1, 35, state_map=["A", "B"])
     return
 
 
 @app.cell
-def _(MaxNLocator, check_left_stochastic, np, plt, stationary_distribution):
+def _(A, MaxNLocator, check_left_stochastic, np, plt, stationary_distribution):
     def viz_dynamics(A, init_state, n_steps, state_map):
         """
         plot P(X_t = i) for each state i, 
@@ -140,11 +173,65 @@ def _(MaxNLocator, check_left_stochastic, np, plt, stationary_distribution):
         fig.tight_layout()
         plt.show()
 
+    viz_dynamics(A, 0, 20, ["A", "B"])
+    return (viz_dynamics,)
+
+
+@app.cell
+def _(check_left_stochastic, np):
+    A2 = np.array(
+        [
+            [0.84, 0.20, 0.0],
+            [0.14, 0.75, 0.0],
+            [0.02, 0.05, 1.0]
+        ]
+    )
+    check_left_stochastic(A2)
+    A2
+    return (A2,)
+
+
+@app.cell
+def _(A2, np):
+    lambda2, V2 = np.linalg.eig(A2)
+    np.real(lambda2)
+    return (V2,)
+
+
+@app.cell
+def _(V2, np):
+    np.real(V2)
     return
 
 
 @app.cell
-def _(np, plt):
+def _(A2, viz_dynamics):
+    viz_dynamics(A2, 0, 100, ["A", "B", "T"])
+    return
+
+
+@app.cell
+def _(A2):
+    A2
+    return
+
+
+@app.cell
+def _(A2):
+    Q = A2[:2, :2]
+    Q
+    return (Q,)
+
+
+@app.cell
+def _(A2):
+    R = A2[2, :2]
+    R
+    return (R,)
+
+
+@app.cell
+def _(Q, R, np, plt):
     def viz_chain_length_distn(Q, R, init_state, n_steps):
         n = Q.shape[0]
 
@@ -176,6 +263,7 @@ def _(np, plt):
         plt.legend()
         plt.show()
 
+    viz_chain_length_distn(Q, R, 0, 150)
     return
 
 
